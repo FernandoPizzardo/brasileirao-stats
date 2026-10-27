@@ -35,7 +35,7 @@ def load_matches(settings: Settings, refresh: bool = False) -> list[Match]:
         except httpx.HTTPError as exc:
             if is_current:
                 raise
-            log.warning("Skipping season %s: %s", season, exc)
+            log.warning("Pulando a temporada %s: %s", season, exc)
     return matches
 
 
@@ -67,6 +67,29 @@ def build_context(settings: Settings, refresh: bool = False) -> Context:
         for m in open_matches
     ]
     return Context(as_of=as_of, model=model, table=table, open_matches=open_matches, fixtures=fixtures)
+
+
+def find_focus_team(table: pd.DataFrame, name: str) -> pd.DataFrame:
+    return table[table["team"].str.contains(name, case=False, regex=False)]
+
+
+def focus_matches(ctx: Context, focus_id: int) -> list[Match]:
+    return [m for m in ctx.open_matches if focus_id in (m.home_id, m.away_id)]
+
+
+def focus_constraints(ctx: Context, focus_id: int, choices: dict[int, str]) -> dict[int, set[str]]:
+    """choices maps match_id to "Win", "Draw" or "Loss" from the focus team's perspective."""
+    by_id = {m.id: m for m in ctx.open_matches}
+    constraints: dict[int, set[str]] = {}
+    for match_id, choice in choices.items():
+        is_home = by_id[match_id].home_id == focus_id
+        if choice == "Draw":
+            constraints[match_id] = {"D"}
+        elif (choice == "Win") == is_home:
+            constraints[match_id] = {"H"}
+        else:
+            constraints[match_id] = {"A"}
+    return constraints
 
 
 def simulate(

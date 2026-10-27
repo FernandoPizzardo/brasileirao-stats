@@ -40,7 +40,7 @@ def parse_matches(payload: dict, season: int) -> list[Match]:
 class FootballDataClient:
     def __init__(self, token: str, cache_dir: Path, transport: httpx.BaseTransport | None = None):
         if not token:
-            raise FootballDataError("FOOTBALL_DATA_TOKEN is not set. Add it to your .env file.")
+            raise FootballDataError("FOOTBALL_DATA_TOKEN não configurado. Adicione-o ao arquivo .env.")
         self._http = httpx.Client(
             base_url=BASE_URL,
             headers={"X-Auth-Token": token},
