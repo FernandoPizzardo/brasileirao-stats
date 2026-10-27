@@ -7,11 +7,13 @@ from brasileirao.config import get_settings
 from brasileirao.formatting import pt_int, pt_num, pt_pct, pt_signed
 from brasileirao.poisson import outcome_probs, scoreline_pmf
 from brasileirao.service import (
+    SCENARIO_PRESETS,
     Context,
     build_context,
     find_focus_team,
     focus_constraints,
     focus_matches,
+    preset_choices,
     refresh_cache,
     simulate,
     zones_from,
@@ -36,6 +38,11 @@ def get_context() -> Context:
 def cached_simulation(_ctx: Context, choices_key: tuple) -> SimulationResult:
     constraints = {match_id: set(outcomes) for match_id, outcomes in choices_key}
     return simulate(_ctx, settings, constraints or None)
+
+
+def apply_preset(ctx: Context, focus_id: int) -> None:
+    for match_id, choice in preset_choices(ctx, focus_id, st.session_state["preset"]).items():
+        st.session_state[f"what_if_{match_id}"] = choice
 
 
 def percent_table(summary: pd.DataFrame) -> pd.DataFrame:
@@ -122,14 +129,22 @@ with tab_whatif:
         st.subheader(f"Defina os resultados dos jogos restantes de {focus_name}")
         st.caption("'Modelo' mantém o resultado simulado. As outras opções fixam o resultado em todas as simulações.")
 
+        st.selectbox(
+            "Cenário pronto",
+            list(SCENARIO_PRESETS),
+            key="preset",
+            on_change=apply_preset,
+            args=(ctx, focus_id),
+        )
+
         choices: dict[int, str] = {}
         for m in focus_matches(ctx, focus_id):
             is_home = m.home_id == focus_id
             opponent = m.away_name if is_home else m.home_name
             label = f"Rodada {m.matchday} · {'em casa contra' if is_home else 'fora contra'} {opponent}"
-            choice = st.selectbox(label, OPTIONS, format_func=OPTION_LABELS.get, key=f"what_if_{m.id}")
-            if choice != "Model":
-                choices[m.id] = choice
+            choices[m.id] = st.selectbox(
+                label, OPTIONS, format_func=OPTION_LABELS.get, key=f"what_if_{m.id}"
+            )
 
         constraints = focus_constraints(ctx, focus_id, choices)
         key = tuple(sorted((match_id, "".join(sorted(allowed))) for match_id, allowed in constraints.items()))

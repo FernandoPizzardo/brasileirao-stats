@@ -9,24 +9,19 @@ import plotly.express as px
 from brasileirao.config import Settings
 from brasileirao.formatting import pt_int, pt_num, pt_pct
 from brasileirao.service import (
+    SCENARIO_PRESETS,
     Context,
     build_context,
     find_focus_team,
     focus_constraints,
     focus_matches,
+    preset_choices,
     simulate,
     zones_from,
 )
 from brasileirao.simulate import position_probabilities, summarize
 
 PERCENT_COLUMNS = ["title", "libertadores", "sula", "relegation"]
-
-SCENARIOS = [
-    ("Modelo", None),
-    ("Vence todos os jogos restantes", "Win"),
-    ("Empata todos os jogos restantes", "Draw"),
-    ("Perde todos os jogos restantes", "Loss"),
-]
 
 COLUMN_LABELS = {
     "team": "Time",
@@ -76,8 +71,6 @@ def build_report(settings: Settings, out_dir: Path) -> None:
         raise ValueError(f"Time em foco '{settings.focus_team}' não encontrado na temporada {settings.season}")
     focus_id = int(focus["team_id"].iloc[0])
     focus_name = focus["team"].iloc[0]
-    remaining = focus_matches(ctx, focus_id)
-
     base_summary = summarize(simulate(ctx, settings), ctx.table, zones)
     odds_html = _mark_focus(
         _format_table(base_summary).drop(columns=["tla"]).to_html(index=False, escape=True, border=0),
@@ -85,8 +78,8 @@ def build_report(settings: Settings, out_dir: Path) -> None:
     )
 
     scenario_rows = []
-    for label, choice in SCENARIOS:
-        choices = {} if choice is None else {m.id: choice for m in remaining}
+    for label in SCENARIO_PRESETS:
+        choices = preset_choices(ctx, focus_id, label)
         summary = summarize(
             simulate(ctx, settings, focus_constraints(ctx, focus_id, choices)), ctx.table, zones
         )
@@ -129,7 +122,7 @@ def build_report(settings: Settings, out_dir: Path) -> None:
 {heatmap_html}
 
 <h2>{escape(focus_name)}: cenários</h2>
-<p class="note">Cada cenário fixa todos os jogos restantes de {escape(focus_name)} no resultado indicado.</p>
+<p class="note">Cada cenário fixa os jogos restantes de {escape(focus_name)}. Mandante e visitante podem ter resultados diferentes. Em "Modelo", nenhum jogo é fixado.</p>
 {scenario_html}
 
 <p class="note">Fonte dos dados: football-data.org.</p>

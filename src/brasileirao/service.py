@@ -77,11 +77,29 @@ def focus_matches(ctx: Context, focus_id: int) -> list[Match]:
     return [m for m in ctx.open_matches if focus_id in (m.home_id, m.away_id)]
 
 
+SCENARIO_PRESETS: dict[str, tuple[str, str]] = {
+    "Modelo": ("Model", "Model"),
+    "Vence todos os jogos restantes": ("Win", "Win"),
+    "Empata todos os jogos restantes": ("Draw", "Draw"),
+    "Perde todos os jogos restantes": ("Loss", "Loss"),
+    "Vence em casa e perde fora": ("Win", "Loss"),
+    "Perde em casa e vence fora": ("Loss", "Win"),
+}
+
+
+def preset_choices(ctx: Context, focus_id: int, preset: str) -> dict[int, str]:
+    """Choice for every remaining match of the focus team: home results and away results may differ."""
+    home_choice, away_choice = SCENARIO_PRESETS[preset]
+    return {m.id: (home_choice if m.home_id == focus_id else away_choice) for m in focus_matches(ctx, focus_id)}
+
+
 def focus_constraints(ctx: Context, focus_id: int, choices: dict[int, str]) -> dict[int, set[str]]:
-    """choices maps match_id to "Win", "Draw" or "Loss" from the focus team's perspective."""
+    """choices maps match_id to "Win", "Draw", "Loss" or "Model" (no constraint) from the focus team's perspective."""
     by_id = {m.id: m for m in ctx.open_matches}
     constraints: dict[int, set[str]] = {}
     for match_id, choice in choices.items():
+        if choice == "Model":
+            continue
         is_home = by_id[match_id].home_id == focus_id
         if choice == "Draw":
             constraints[match_id] = {"D"}
