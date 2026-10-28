@@ -56,7 +56,7 @@ def simulate_season(
     """Simulate the rest of the season. `constraints` maps match_id to the allowed outcomes
     from the home side's perspective, e.g. {"H"} forces a home win.
 
-    Ties are ranked by points, wins, goal difference, goals scored, then a random draw.
+    Ties are ranked by points, goal difference, goals scored, then a random draw.
     Head-to-head is not applied in simulations, which is a known approximation."""
     team_ids = table["team_id"].tolist()
     index = {team_id: i for i, team_id in enumerate(team_ids)}
@@ -91,7 +91,7 @@ def simulate_season(
 
     gd = gf - ga
     tiebreak = rng.integers(0, 100, size=(n_sims, n_teams))
-    key = (((points * 39 + wins) * 2001 + (gd + 1000)) * 1001 + gf) * 100 + tiebreak
+    key = ((points * 2001 + (gd + 1000)) * 1001 + gf) * 100 + tiebreak
     order = np.argsort(-key, axis=1, kind="stable")
     positions = np.empty_like(order)
     np.put_along_axis(positions, order, np.tile(np.arange(1, n_teams + 1), (n_sims, 1)), axis=1)

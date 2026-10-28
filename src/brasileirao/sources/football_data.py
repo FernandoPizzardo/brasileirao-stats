@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 
 import httpx
@@ -49,11 +50,26 @@ class FootballDataClient:
         )
         self._cache_dir = cache_dir
 
+    def _get(self, url: str, params: dict) -> httpx.Response:
+        # The free tier allows about 10 requests per minute. Wait and retry on 429.
+        for attempt in range(4):
+            response = self._http.get(url, params=params)
+            if response.status_code != 429:
+                response.raise_for_status()
+                return response
+            time.sleep(int(response.headers.get("Retry-After", 65)) if attempt < 3 else 0)
+        response.raise_for_status()
+        return response
+
+    def official_standings(self, competition: str, season: int) -> dict[int, dict]:
+        response = self._get(f"/competitions/{competition}/standings", {"season": season})
+        table = response.json()["standings"][0]["table"]
+        return {row["team"]["id"]: row for row in table}
+
     def season_matches(self, competition: str, season: int, refresh: bool = False) -> list[Match]:
         path = self._cache_dir / f"{competition}_{season}.json"
         if refresh or not path.exists():
-            response = self._http.get(f"/competitions/{competition}/matches", params={"season": season})
-            response.raise_for_status()
+            response = self._get(f"/competitions/{competition}/matches", {"season": season})
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(response.text, encoding="utf-8")
         payload = json.loads(path.read_text(encoding="utf-8"))

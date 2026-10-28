@@ -39,6 +39,24 @@ def load_matches(settings: Settings, refresh: bool = False) -> list[Match]:
     return matches
 
 
+def verify_season(settings: Settings, season: int, matches: list[Match]) -> list[str]:
+    """Compare our table with the official one. Returns a list of mismatch descriptions."""
+    client = FootballDataClient(settings.football_data_token, settings.data_dir / "raw")
+    official = client.official_standings(settings.competition_code, season)
+    ours = standings([m for m in matches if m.season == season]).set_index("team_id")
+    problems = []
+    for team_id, row in ours.iterrows():
+        o = official.get(team_id)
+        if o is None:
+            problems.append(f"{row['team']}: ausente na tabela oficial")
+        elif (o["points"], o["goalDifference"], o["position"]) != (row["points"], row["gd"], row["position"]):
+            problems.append(
+                f"{row['team']}: nossa posição {row['position']} ({row['points']} pts, SG {row['gd']}) "
+                f"x oficial {o['position']} ({o['points']} pts, SG {o['goalDifference']})"
+            )
+    return problems
+
+
 def refresh_cache(settings: Settings) -> None:
     load_matches(settings, refresh=True)
 

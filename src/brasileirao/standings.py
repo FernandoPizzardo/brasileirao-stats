@@ -6,7 +6,7 @@ FIELDS = ["team_id", "tla", "team", "played", "won", "drawn", "lost", "gf", "ga"
 
 
 def _sort_key(row: dict) -> tuple:
-    return (-row["points"], -row["won"], -row["gd"], -row["gf"])
+    return (-row["points"], -row["gd"], -row["gf"])
 
 
 def _head_to_head_points(played: list[Match], team_ids: list[int]) -> dict[int, int]:
@@ -42,9 +42,9 @@ def _break_ties(rows: list[dict], played: list[Match]) -> list[dict]:
 
 
 def standings(matches: list[Match]) -> pd.DataFrame:
-    """Pontos corridos table. Tiebreaks: points, wins, goal difference, goals scored,
-    head-to-head points. Remaining ties keep alphabetical order. Card tiebreakers and
-    the official draw are not modelled."""
+    """Pontos corridos table. Tiebreaks: points, goal difference, goals scored, head-to-head
+    points. Matches the official football-data.org tables for 2023-2025. Remaining ties keep
+    alphabetical order. Card tiebreakers and the official draw are not modelled."""
     rows: dict[int, dict] = {}
     for m in matches:
         for team_id, name, tla in ((m.home_id, m.home_name, m.home_tla), (m.away_id, m.away_name, m.away_tla)):

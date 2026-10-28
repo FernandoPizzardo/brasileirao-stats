@@ -5,7 +5,14 @@ from brasileirao.backtest import backtest, score
 from brasileirao.config import get_settings
 from brasileirao.formatting import pt_num
 from brasileirao.report import build_report
-from brasileirao.service import build_context, load_matches, refresh_cache, simulate, zones_from
+from brasileirao.service import (
+    build_context,
+    load_matches,
+    refresh_cache,
+    simulate,
+    verify_season,
+    zones_from,
+)
 from brasileirao.simulate import summarize
 
 
@@ -15,6 +22,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("fetch", help="atualiza a temporada atual no cache local, via API")
     sub.add_parser("simulate", help="mostra as probabilidades de posição final de cada time")
     sub.add_parser("backtest", help="avalia o modelo em rodadas passadas, contra uma referência simples")
+    sub.add_parser("verify", help="confere nossa tabela de temporadas passadas com a tabela oficial")
     report = sub.add_parser("report", help="gera um relatório HTML estático")
     report.add_argument("--out", default="site", help="pasta de saída")
     args = parser.parse_args(argv)
@@ -23,6 +31,18 @@ def main(argv: list[str] | None = None) -> None:
     if args.command == "fetch":
         refresh_cache(settings)
         print("Cache atualizado.")
+        return
+    if args.command == "verify":
+        matches = load_matches(settings)
+        seasons = sorted({m.season for m in matches} - {settings.season})
+        total = 0
+        for season in seasons:
+            problems = verify_season(settings, season, matches)
+            total += len(problems)
+            print(f"Temporada {season}: {'OK' if not problems else f'{len(problems)} divergência(s)'}")
+            for problem in problems:
+                print(f"   {problem}")
+        print(f"Total de divergências: {total}")
         return
     if args.command == "report":
         build_report(settings, Path(args.out))

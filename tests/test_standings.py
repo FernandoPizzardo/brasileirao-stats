@@ -42,6 +42,24 @@ def test_head_to_head_breaks_ties():
     assert df["points"].tolist() == [6, 6, 3, 0]
 
 
+def test_goal_difference_ranks_before_wins():
+    # X has two 1-0 wins and a 0-2 loss. Y has one 2-0 win and three 0-0 draws.
+    # Both have 6 points and X has more wins, but Y has the better goal difference.
+    names = {1: "Xis", 2: "Ypsilon"}
+    matches = [
+        played(1, 1, 3, 1, 0, names),
+        played(2, 1, 4, 1, 0, names),
+        played(3, 5, 1, 2, 0, names),
+        played(4, 2, 3, 2, 0, names),
+        played(5, 2, 4, 0, 0, names),
+        played(6, 2, 5, 0, 0, names),
+        played(7, 2, 6, 0, 0, names),
+    ]
+    df = standings(matches)
+    order = df["team_id"].tolist()
+    assert order.index(2) < order.index(1)
+
+
 def test_unplayed_matches_do_not_count():
     matches = [played(1, 1, 2, 1, 0)]
     future = matches[0].model_copy(update={"id": 2, "status": "SCHEDULED", "home_goals": None, "away_goals": None})
